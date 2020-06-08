@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,8 +11,10 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
-namespace SabberStoneCoreGui.Meta
+
+namespace SabberStoneGui.Meta
 {
 	public enum Strategy
 	{
@@ -20,6 +23,6 @@ namespace SabberStoneCoreGui.Meta
 		Control,
 		Ramp,
 		Fatigue,
-		None
+		None,
 	}
 }

@@ -5,9 +5,9 @@ namespace SabberStoneGui.Deck
 {
 	internal interface IDeck
 	{
-		string Name { get; set; }
-		string Link { get; set; }
-		FormatType FormatType { get; set; }
-		List<string> CardIds { get; set; }
+		string       Name       { get; set; }
+		string       Link       { get; set; }
+		FormatType   FormatType { get; set; }
+		List<string> CardIds    { get; set; }
 	}
 }

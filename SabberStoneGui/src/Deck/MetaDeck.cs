@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,33 +11,23 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
-namespace SabberStoneCoreGui.Score
+
+using System.Collections.Generic;
+using SabberStoneCore.Enums;
+using SabberStoneGui.Meta;
+
+namespace SabberStoneGui.Deck
 {
-	public class ControlScore : Score
+	public class MetaDeck : IDeck
 	{
-		public override int Rate()
-		{
-			if (OpHeroHp < 1)
-				return int.MaxValue;
-
-			if (HeroHp < 1)
-				return int.MinValue;
-
-			int result = 0;
-
-			if (OpBoardZone.Count == 0 && BoardZone.Count > 0)
-				result += 1000;
-
-			result += (BoardZone.Count - OpBoardZone.Count) * 50;
-
-			result += (MinionTotHealthTaunt - OpMinionTotHealthTaunt) * 25;
-
-			result += MinionTotAtk;
-
-			result += (HeroHp - OpHeroHp) * 10;
-
-			return result;
-		}
+		public string       Description { get; set; }
+		public CardClass    HeroClass   { get; set; }
+		public Strategy     Strategy    { get; set; }
+		public string       Name        { get; set; }
+		public string       Link        { get; set; }
+		public FormatType   FormatType  { get; set; }
+		public List<string> CardIds     { get; set; }
 	}
 }

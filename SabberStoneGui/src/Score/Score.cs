@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,23 +11,17 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
+
 using System.Linq;
-using SabberStoneCore.Model.Zones;
 using SabberStoneCore.Model.Entities;
+using SabberStoneCore.Model.Zones;
 
-namespace SabberStoneCoreGui.Score
+namespace SabberStoneGui.Score
 {
-	public interface IScore
-	{
-		Controller Controller { get; set; }
-		int Rate();
-	}
-
 	public class Score : IScore
 	{
-		public Controller Controller { get; set; }
-
 		public int HeroHp => Controller.Hero.Health;
 
 		public int OpHeroHp => Controller.Opponent.Hero.Health;
@@ -59,14 +54,19 @@ namespace SabberStoneCoreGui.Score
 
 		public int OpMinionTotHealth => OpBoardZone.Sum(p => p.Health);
 
-		public int MinionTotHealthTaunt => BoardZone.Where(p => p.HasTaunt).Sum(p => p.Health);
+		public int MinionTotHealthTaunt =>
+			BoardZone.Where(p => p.HasTaunt)
+			         .Sum(p => p.Health);
 
-		public int OpMinionTotHealthTaunt => OpBoardZone.Where(p => p.HasTaunt).Sum(p => p.Health);
+		public int OpMinionTotHealthTaunt =>
+			OpBoardZone.Where(p => p.HasTaunt)
+			           .Sum(p => p.Health);
+
+		public Controller Controller { get; set; }
 
 		public virtual int Rate()
 		{
 			return 0;
 		}
-
 	}
 }

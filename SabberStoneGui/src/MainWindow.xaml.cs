@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,10 +11,12 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
+
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -23,51 +26,126 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using Newtonsoft.Json;
-using SabberStoneCore.Model;
-using SabberStoneCoreGui.Score;
-using SabberStoneCoreGui.Nodes;
-using SabberStoneCoreGui.Meta;
-using SabberStoneGui.Core;
-using SabberStoneGui.Deck;
 using SabberStoneCore.Enums;
+using SabberStoneCore.Model;
+using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks.PlayerTasks;
 using SabberStoneCore.Visualizer;
+using SabberStoneGui.Core;
+using SabberStoneGui.Deck;
+using SabberStoneGui.Meta;
+using SabberStoneGui.Nodes;
+using SabberStoneGui.Score;
 
 namespace SabberStoneGui
 {
 	/// <summary>
-	/// Interaktionslogik für MainWindow.xaml
+	///     Interaktionslogik für MainWindow.xaml
 	/// </summary>
 	public partial class MainWindow : Window
 	{
-		public Game CurrentGame;
+		public List<MetaDeck> AllDecks;
+
+		public List<Card> CurrentDeck = new List<Card>();
+		public Game       CurrentGame;
 
 		public List<PlayerTask> CurrentSolution;
 
-		public List<Card> CurrentDeck = new List<Card>();
-
-		public List<MetaDeck> AllDecks;
-
-		private void worker_DoWork(object sender, DoWorkEventArgs e)
+		public MainWindow()
 		{
-			var worker = sender as BackgroundWorker;
+			InitializeComponent();
+
+			CbxFormat.ItemsSource         = GuiHelper.FormatTypes;
+			CbxFormat.SelectedIndex       = 1;
+			CbxClassCard.ItemsSource      = GuiHelper.ClassTypes;
+			CbxClassCard.SelectedIndex    = 1;
+			CbxDeckStrategy.ItemsSource   = GuiHelper.StrategyTypes;
+			CbxDeckStrategy.SelectedIndex = 1;
+			if (File.Exists(Environment.CurrentDirectory + @"\allDecks.json"))
+			{
+				string json = File.ReadAllText(Environment.CurrentDirectory + @"\allDecks.json");
+				AllDecks = JsonConvert.DeserializeObject<List<MetaDeck>>(json);
+			} else
+			{
+				AllDecks = new List<MetaDeck>();
+			}
+
+			DtDeckFiles.ItemsSource = AllDecks;
+
+			CboxAi1.ItemsSource = GuiHelper.StrategyTypes;
+			CboxAi2.ItemsSource = GuiHelper.StrategyTypes;
+
+			CboxDeck1.ItemsSource   = AllDecks;
+			CboxDeck1.SelectedIndex = 1;
+			CboxDeck2.ItemsSource   = AllDecks;
+			CboxDeck2.SelectedIndex = 1;
+
+
+			string[] help = CardAsciiBuilder.PrintHelp();
+			ViewBox.Text = help[0]             +
+			               Environment.NewLine +
+			               help[1]             +
+			               Environment.NewLine +
+			               help[2]             +
+			               Environment.NewLine +
+			               help[3]             +
+			               Environment.NewLine +
+			               help[4]             +
+			               Environment.NewLine +
+			               help[5]             +
+			               Environment.NewLine +
+			               Environment.NewLine +
+			               help[6]             +
+			               Environment.NewLine +
+			               help[7]             +
+			               Environment.NewLine +
+			               help[8]             +
+			               Environment.NewLine +
+			               help[9]             +
+			               Environment.NewLine +
+			               help[10]            +
+			               Environment.NewLine +
+			               help[11]            +
+			               Environment.NewLine +
+			               Environment.NewLine +
+			               help[12]            +
+			               Environment.NewLine +
+			               help[13]            +
+			               Environment.NewLine +
+			               help[14]            +
+			               Environment.NewLine +
+			               help[15]            +
+			               Environment.NewLine +
+			               help[16]            +
+			               Environment.NewLine +
+			               help[17]            +
+			               Environment.NewLine;
+		}
+
+		private void worker_DoWork(
+			object          sender,
+			DoWorkEventArgs e
+		)
+		{
+			var worker     = sender as BackgroundWorker;
 			var parameters = e.Argument as List<object>;
 
-			int maxDepth = (int)parameters[0];
-			int maxWidth = (int)parameters[1];
-			var scoring = (IScore)parameters[2];
+			int maxDepth = (int) parameters[index: 0];
+			int maxWidth = (int) parameters[index: 1];
+			var scoring  = (IScore) parameters[index: 2];
 
 			var depthNodes = new Dictionary<string, OptionNode>
 			{
-				["root"] = new OptionNode(null, CurrentGame, CurrentGame.CurrentPlayer.Id, null, scoring)
+				[key: "root"] = new OptionNode(parent: null, CurrentGame, CurrentGame.CurrentPlayer.Id,
+				                               playerTask: null, scoring),
 			};
 			var endTurnNodes = new List<OptionNode>();
-			for (int i = 0; depthNodes.Count > 0 && i < maxDepth; i++)
+			for (int i = 0; (depthNodes.Count > 0) && (i < maxDepth); i++)
 			{
 				//var nextDepthNodes = new Dictionary<string, OptionNode>();
 				var nextDepthNodes = new ConcurrentDictionary<string, OptionNode>();
-				int countNodes = 0;
-				int countNodesTot = depthNodes.Values.Count;
+				int countNodes     = 0;
+				int countNodesTot  = depthNodes.Values.Count;
 				//foreach (var option in depthNodes.Values)
 				//{
 				//	countNodes++;
@@ -87,19 +165,23 @@ namespace SabberStoneGui
 						}, TaskCreationOptions.AttachedToParent);
 					}));
 				}
+
 				foreach (Task task in tasks)
+				{
 					task.Start();
+				}
+
 				Task.WaitAll(tasks.ToArray());
 
 				endTurnNodes.AddRange(nextDepthNodes.Values.Where(p => p.IsEndTurn || p.IsWon));
 
-				depthNodes = nextDepthNodes
-					.Where(p => !p.Value.IsEndTurn && p.Value.IsRunning)
-					.OrderByDescending(p => p.Value.Score)
-					.Take(maxWidth)
-					.ToDictionary(p => p.Key, p => p.Value);
+				depthNodes = nextDepthNodes.Where(p => !p.Value.IsEndTurn && p.Value.IsRunning)
+				                           .OrderByDescending(p => p.Value.Score)
+				                           .Take(maxWidth)
+				                           .ToDictionary(p => p.Key, p => p.Value);
 
-				worker?.ReportProgress(i + 1,
+				worker?.ReportProgress(
+					i + 1,
 					$"Depth: {i + 1} --> {depthNodes.Count}/{nextDepthNodes.Count} options! [SOLUTIONS:{endTurnNodes.Count}]");
 			}
 
@@ -117,8 +199,13 @@ namespace SabberStoneGui
 			e.Result = endTurnNodes;
 		}
 
-		private List<OptionNode> GetOpTurn(string playerTag, int maxDepth, int maxWidth, BackgroundWorker worker,
-			List<OptionNode> endTurnNodes)
+		private List<OptionNode> GetOpTurn(
+			string           playerTag,
+			int              maxDepth,
+			int              maxWidth,
+			BackgroundWorker worker,
+			List<OptionNode> endTurnNodes
+		)
 		{
 			var opDepthNodes = new Dictionary<string, OptionNode>();
 			endTurnNodes.ForEach(p =>
@@ -131,12 +218,12 @@ namespace SabberStoneGui
 			});
 
 			var opEndTurnNodes = new List<OptionNode>();
-			for (int i = 0; opDepthNodes.Count > 0 && i < maxDepth; i++)
+			for (int i = 0; (opDepthNodes.Count > 0) && (i < maxDepth); i++)
 			{
 				//var nextDepthNodes = new Dictionary<string, OptionNode>();
 				var nextDepthNodes = new ConcurrentDictionary<string, OptionNode>();
-				int countNodes = 0;
-				int countNodesTot = opDepthNodes.Values.Count;
+				int countNodes     = 0;
+				int countNodesTot  = opDepthNodes.Values.Count;
 				//foreach (var option in opDepthNodes.Values)
 				//{
 				//	countNodes++;
@@ -150,103 +237,59 @@ namespace SabberStoneGui
 					worker?.ReportProgress(countNodes, countNodesTot);
 					tasks.Add(new Task(() => option.Options(ref nextDepthNodes)));
 				}
+
 				foreach (Task task in tasks)
+				{
 					task.Start();
+				}
+
 				Task.WaitAll(tasks.ToArray());
 
 				opEndTurnNodes.AddRange(nextDepthNodes.Values.Where(p => p.IsEndTurn || p.IsWon));
 
-				opDepthNodes = nextDepthNodes
-					.Where(p => !p.Value.IsEndTurn && p.Value.IsRunning)
-					.OrderByDescending(p => p.Value.Score)
-					.Take(maxWidth)
-					.ToDictionary(p => p.Key, p => p.Value);
+				opDepthNodes = nextDepthNodes.Where(p => !p.Value.IsEndTurn && p.Value.IsRunning)
+				                             .OrderByDescending(p => p.Value.Score)
+				                             .Take(maxWidth)
+				                             .ToDictionary(p => p.Key, p => p.Value);
 
-				worker?.ReportProgress(i + 1,
+				worker?.ReportProgress(
+					i + 1,
 					$"{playerTag}: {i + 1} --> {opDepthNodes.Count}/{nextDepthNodes.Count} options! [SOLUTIONS:{opEndTurnNodes.Count}]");
 			}
 
 			return opEndTurnNodes;
 		}
 
-		private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+		private void worker_ProgressChanged(
+			object                   sender,
+			ProgressChangedEventArgs e
+		)
 		{
 			int test = e.ProgressPercentage;
 
 			if (e.UserState is int)
 			{
-				PgrBarDepth.Value = (double)test * 100 / (int)e.UserState;
-			}
-			else if (e.UserState != null)
+				PgrBarDepth.Value = ((double) test * 100) / (int) e.UserState;
+			} else if (e.UserState != null)
 			{
-				TxtPlayer1.AppendText(e.UserState.ToString() + Environment.NewLine);
+				TxtPlayer1.AppendText(e.UserState + Environment.NewLine);
 			}
 		}
 
-		private void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+		private void worker_RunWorkerCompleted(
+			object                      sender,
+			RunWorkerCompletedEventArgs e
+		)
 		{
-			var endTurnNodes = (List<OptionNode>)e.Result;
+			var endTurnNodes = (List<OptionNode>) e.Result;
 			CurrentSolution = new List<PlayerTask>();
-			endTurnNodes.OrderByDescending(p => p.Score).First().PlayerTasks(ref CurrentSolution);
+			endTurnNodes.OrderByDescending(p => p.Score)
+			            .First()
+			            .PlayerTasks(ref CurrentSolution);
 			ShowCurrentSolution();
-			BtnStart.IsEnabled = true;
+			BtnStart.IsEnabled     = true;
 			SlidMaxDepth.IsEnabled = true;
 			SlidMaxWidth.IsEnabled = true;
-		}
-
-		public MainWindow()
-		{
-			InitializeComponent();
-
-			CbxFormat.ItemsSource = GuiHelper.FormatTypes;
-			CbxFormat.SelectedIndex = 1;
-			CbxClassCard.ItemsSource = GuiHelper.ClassTypes;
-			CbxClassCard.SelectedIndex = 1;
-			CbxDeckStrategy.ItemsSource = GuiHelper.StrategyTypes;
-			CbxDeckStrategy.SelectedIndex = 1;
-			if (File.Exists(Environment.CurrentDirectory + @"\allDecks.json"))
-			{
-				string json = File.ReadAllText(Environment.CurrentDirectory + @"\allDecks.json");
-				AllDecks = JsonConvert.DeserializeObject<List<MetaDeck>>(json);
-			}
-			else
-			{
-				AllDecks = new List<MetaDeck>();
-			}
-
-			DtDeckFiles.ItemsSource = AllDecks;
-
-			CboxAi1.ItemsSource = GuiHelper.StrategyTypes;
-			CboxAi2.ItemsSource = GuiHelper.StrategyTypes;
-
-			CboxDeck1.ItemsSource = AllDecks;
-			CboxDeck1.SelectedIndex = 1;
-			CboxDeck2.ItemsSource = AllDecks;
-			CboxDeck2.SelectedIndex = 1;
-
-
-			string[] help = CardAsciiBuilder.PrintHelp();
-			ViewBox.Text =
-				help[0] + Environment.NewLine +
-				help[1] + Environment.NewLine +
-				help[2] + Environment.NewLine +
-				help[3] + Environment.NewLine +
-				help[4] + Environment.NewLine +
-				help[5] + Environment.NewLine +
-				Environment.NewLine +
-				help[6] + Environment.NewLine +
-				help[7] + Environment.NewLine +
-				help[8] + Environment.NewLine +
-				help[9] + Environment.NewLine +
-				help[10] + Environment.NewLine +
-				help[11] + Environment.NewLine +
-				Environment.NewLine +
-				help[12] + Environment.NewLine +
-				help[13] + Environment.NewLine +
-				help[14] + Environment.NewLine +
-				help[15] + Environment.NewLine +
-				help[16] + Environment.NewLine +
-				help[17] + Environment.NewLine;
 		}
 
 		public void Actualize()
@@ -257,40 +300,44 @@ namespace SabberStoneGui
 			{
 				LogEntry logEntry = CurrentGame.Logs.Dequeue();
 				if (logEntry.Level <= LogLevel.INFO)
+				{
 					TxtPlayLog.Text += $"[{logEntry.BlockType}] - {logEntry.Location}: {logEntry.Text}\n";
+				}
 			}
 
 
 			TxtPlayLog.ScrollToEnd();
 
-			if (CurrentGame.State == State.RUNNING && !BtnStart.IsEnabled)
+			if ((CurrentGame.State == State.RUNNING) && !BtnStart.IsEnabled)
 			{
 				TxtPlayer1.Text = $"* Calculating solutions *** {CurrentGame.CurrentPlayer} ***" + Environment.NewLine;
 				TxtPlayer1.AppendText(
-					$"... with depth: {(int)SlidMaxDepth.Value} and width: {(int)SlidMaxWidth.Value} ..." +
+					$"... with depth: {(int) SlidMaxDepth.Value} and width: {(int) SlidMaxWidth.Value} ..." +
 					Environment.NewLine);
-				var worker = new BackgroundWorker { WorkerReportsProgress = true };
-				worker.DoWork += worker_DoWork;
-				worker.ProgressChanged += worker_ProgressChanged;
+				var worker = new BackgroundWorker {WorkerReportsProgress = true,};
+				worker.DoWork             += worker_DoWork;
+				worker.ProgressChanged    += worker_ProgressChanged;
 				worker.RunWorkerCompleted += worker_RunWorkerCompleted;
 				IScore scoring = CurrentGame.CurrentPlayer == CurrentGame.Player1
-					? GuiHelper.GetScoring((Strategy)CboxAi1.SelectedValue)
-					: GuiHelper.GetScoring((Strategy)CboxAi2.SelectedValue);
-				worker.RunWorkerAsync(new List<object> { (int)SlidMaxDepth.Value, (int)SlidMaxWidth.Value, scoring });
+					? GuiHelper.GetScoring((Strategy) CboxAi1.SelectedValue)
+					: GuiHelper.GetScoring((Strategy) CboxAi2.SelectedValue);
+				worker.RunWorkerAsync(new List<object> {(int) SlidMaxDepth.Value, (int) SlidMaxWidth.Value, scoring,});
 				BtnStart.Content = $"{CurrentGame.CurrentPlayer} Move!";
-			}
-			else if (CurrentGame.State == SabberStoneCore.Enums.State.COMPLETE)
+			} else if (CurrentGame.State == State.COMPLETE)
 			{
-				TxtPlayer1.Text = ".. Game is finished!" + Environment.NewLine +
-								  $"P1: {CurrentGame.Player1} => {CurrentGame.Player1.PlayState}" + Environment.NewLine +
-								  $"P2: {CurrentGame.Player2} => {CurrentGame.Player2.PlayState}" + Environment.NewLine;
+				TxtPlayer1.Text = ".. Game is finished!"                                          +
+				                  Environment.NewLine                                             +
+				                  $"P1: {CurrentGame.Player1} => {CurrentGame.Player1.PlayState}" +
+				                  Environment.NewLine                                             +
+				                  $"P2: {CurrentGame.Player2} => {CurrentGame.Player2.PlayState}" +
+				                  Environment.NewLine;
 				BtnStart.IsEnabled = true;
-				BtnStart.Content = "Finished!" + Environment.NewLine + "..new game?";
+				BtnStart.Content   = "Finished!" + Environment.NewLine + "..new game?";
 
 				CboxDeck1.IsEnabled = true;
 				CboxDeck2.IsEnabled = true;
-				CboxAi1.IsEnabled = true;
-				CboxAi2.IsEnabled = true;
+				CboxAi1.IsEnabled   = true;
+				CboxAi2.IsEnabled   = true;
 			}
 		}
 
@@ -301,33 +348,37 @@ namespace SabberStoneGui
 				p => TxtPlayer1.AppendText(CurrentSolution.IndexOf(p) + ") " + p.FullPrint() + Environment.NewLine));
 		}
 
-		private void Button_Click(object sender, RoutedEventArgs e)
+		private void Button_Click(
+			object          sender,
+			RoutedEventArgs e
+		)
 		{
-			if (CurrentGame?.State == SabberStoneCore.Enums.State.RUNNING)
+			if (CurrentGame?.State == State.RUNNING)
 			{
-				SabberStoneCore.Model.Entities.Controller curPlayer = CurrentGame.CurrentPlayer;
-				PlayerTask nextTask = CurrentSolution[0];
+				Controller curPlayer = CurrentGame.CurrentPlayer;
+				PlayerTask nextTask  = CurrentSolution[index: 0];
 				CurrentSolution.Remove(nextTask);
 				CurrentGame.Process(nextTask);
 				ShowCurrentSolution();
-				if (CurrentGame.CurrentPlayer != curPlayer || CurrentGame.CurrentPlayer.Choice != null)
+				if ((CurrentGame.CurrentPlayer != curPlayer) || (CurrentGame.CurrentPlayer.Choice != null))
 				{
-					BtnStart.IsEnabled = false;
+					BtnStart.IsEnabled     = false;
 					SlidMaxDepth.IsEnabled = false;
 					SlidMaxWidth.IsEnabled = false;
 				}
-			}
-			else
+			} else
 			{
 				TxtPlayer1.Text = "* Starting a new Game .... ***";
 
-				CurrentGame = new Game(GuiHelper.CreateGameConfig((MetaDeck)CboxDeck1.SelectedItem, (MetaDeck)CboxDeck2.SelectedItem));
+				CurrentGame =
+					new Game(GuiHelper.CreateGameConfig((MetaDeck) CboxDeck1.SelectedItem,
+					                                    (MetaDeck) CboxDeck2.SelectedItem));
 				CurrentGame.StartGame();
-				CboxDeck1.IsEnabled = false;
-				CboxDeck2.IsEnabled = false;
-				CboxAi1.IsEnabled = false;
-				CboxAi2.IsEnabled = false;
-				BtnStart.IsEnabled = false;
+				CboxDeck1.IsEnabled    = false;
+				CboxDeck2.IsEnabled    = false;
+				CboxAi1.IsEnabled      = false;
+				CboxAi2.IsEnabled      = false;
+				BtnStart.IsEnabled     = false;
 				SlidMaxDepth.IsEnabled = false;
 				SlidMaxWidth.IsEnabled = false;
 			}
@@ -335,23 +386,31 @@ namespace SabberStoneGui
 			Actualize();
 		}
 
-		private void CbxFormat_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		private void CbxFormat_SelectionChanged(
+			object                    sender,
+			SelectionChangedEventArgs e
+		)
 		{
 			BuildCardList();
 		}
 
-		private void CbxClassCard_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		private void CbxClassCard_SelectionChanged(
+			object                    sender,
+			SelectionChangedEventArgs e
+		)
 		{
 			BuildCardList();
 		}
 
 		private void BuildCardList()
 		{
-			if (CbxFormat.SelectedItem == null || CbxClassCard.SelectedItem == null)
+			if ((CbxFormat.SelectedItem == null) || (CbxClassCard.SelectedItem == null))
+			{
 				return;
+			}
 
-			var formatType = (FormatType)CbxFormat.SelectedItem;
-			var cardClass = (CardClass)CbxClassCard.SelectedItem;
+			var formatType = (FormatType) CbxFormat.SelectedItem;
+			var cardClass  = (CardClass) CbxClassCard.SelectedItem;
 
 			IEnumerable<Card> cards;
 			switch (formatType)
@@ -366,124 +425,170 @@ namespace SabberStoneGui
 					throw new NotImplementedException();
 			}
 
-			DtGrTest.ItemsSource = cards.OrderBy(p => p.Class).ThenBy(c => c.Cost);
+			DtGrTest.ItemsSource = cards.OrderBy(p => p.Class)
+			                            .ThenBy(c => c.Cost);
 		}
 
-		private void DtGrTest_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		private void DtGrTest_SelectionChanged(
+			object                    sender,
+			SelectionChangedEventArgs e
+		)
 		{
-			var card = (Card)DtGrTest.SelectedItem;
+			var card = (Card) DtGrTest.SelectedItem;
 			if (card != null)
-				UpdatedImage(card.Id);
-		}
-
-		private void BtnAddCard_Click(object sender, RoutedEventArgs e)
-		{
-			var card = (Card)DtGrTest.SelectedItem;
-			if (CurrentDeck.Count < 30 && CurrentDeck.Count(p => p == card) < card.MaxAllowedInDeck)
 			{
-				CurrentDeck.Add(card);
-				LbCardCountValue.Content = CurrentDeck.Count;
-				DtGrDeck.ItemsSource = CurrentDeck.OrderBy(p => p.Class).ThenBy(c => c.Cost);
+				UpdatedImage(card.Id);
 			}
 		}
 
-		private void BtnRemoveCard_Click(object sender, RoutedEventArgs e)
+		private void BtnAddCard_Click(
+			object          sender,
+			RoutedEventArgs e
+		)
 		{
-			var card = (Card)DtGrDeck.SelectedItem;
+			var card = (Card) DtGrTest.SelectedItem;
+			if ((CurrentDeck.Count < 30) && (CurrentDeck.Count(p => p == card) < card.MaxAllowedInDeck))
+			{
+				CurrentDeck.Add(card);
+				LbCardCountValue.Content = CurrentDeck.Count;
+				DtGrDeck.ItemsSource = CurrentDeck.OrderBy(p => p.Class)
+				                                  .ThenBy(c => c.Cost);
+			}
+		}
+
+		private void BtnRemoveCard_Click(
+			object          sender,
+			RoutedEventArgs e
+		)
+		{
+			var card = (Card) DtGrDeck.SelectedItem;
 			CurrentDeck.Remove(card);
 			LbCardCountValue.Content = CurrentDeck.Count;
-			DtGrDeck.ItemsSource = CurrentDeck.OrderBy(p => p.Class).ThenBy(c => c.Cost);
+			DtGrDeck.ItemsSource = CurrentDeck.OrderBy(p => p.Class)
+			                                  .ThenBy(c => c.Cost);
 		}
 
-		private void DtGrDeck_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		private void DtGrDeck_SelectionChanged(
+			object                    sender,
+			SelectionChangedEventArgs e
+		)
 		{
-			var card = (Card)DtGrDeck.SelectedItem;
+			var card = (Card) DtGrDeck.SelectedItem;
 			if (card != null)
+			{
 				UpdatedImage(card.Id);
+			}
 		}
 
-		private void UpdatedImage(string cardid)
+		private void UpdatedImage(
+			string cardid
+		)
 		{
-			var bDecoder = BitmapDecoder.Create(new Uri("http://media.services.zam.com/v1/media/byName/hs/cards/enus/" + cardid + ".png"),
-				BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.None);
+			var bDecoder =
+				BitmapDecoder.Create(
+					new Uri("http://media.services.zam.com/v1/media/byName/hs/cards/enus/" + cardid + ".png"),
+					BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.None);
 
 			if (bDecoder.Frames.Count > 0)
-				ImgCard.Source = bDecoder.Frames[0];
+			{
+				ImgCard.Source = bDecoder.Frames[index: 0];
+			}
 		}
 
-		private void BtSave_Click(object sender, RoutedEventArgs e)
+		private void BtSave_Click(
+			object          sender,
+			RoutedEventArgs e
+		)
 		{
 			if (CurrentDeck.Count != 30)
 			{
-				MessageBox.Show("MetaDeck isn't legit!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+				MessageBox.Show(messageBoxText: "MetaDeck isn't legit!", caption: "Warning", MessageBoxButton.OK,
+				                MessageBoxImage.Warning);
 			}
 
 			var deck = new MetaDeck
 			{
-				Name = TxDeckname.Text,
+				Name        = TxDeckname.Text,
 				Description = TxDescription.Text,
-				Link = TxDeckLink.Text,
-				FormatType = (FormatType)CbxFormat.SelectedItem,
-				HeroClass = (CardClass)CbxClassCard.SelectedItem,
-				Strategy = (Strategy)CbxDeckStrategy.SelectedItem,
-				CardIds = CurrentDeck.Select(p => p.Id).ToList()
+				Link        = TxDeckLink.Text,
+				FormatType  = (FormatType) CbxFormat.SelectedItem,
+				HeroClass   = (CardClass) CbxClassCard.SelectedItem,
+				Strategy    = (Strategy) CbxDeckStrategy.SelectedItem,
+				CardIds = CurrentDeck.Select(p => p.Id)
+				                     .ToList(),
 			};
 
 			if (AllDecks == null)
-				AllDecks = new List<MetaDeck> { deck };
-			else
+			{
+				AllDecks = new List<MetaDeck> {deck,};
+			} else
+			{
 				AllDecks.Add(deck);
+			}
 
 			WriteAllDecks();
 		}
 
-		private void BtnLoadDeck_Click(object sender, RoutedEventArgs e)
+		private void BtnLoadDeck_Click(
+			object          sender,
+			RoutedEventArgs e
+		)
 		{
-			var file = (MetaDeck)DtDeckFiles.SelectedItem;
+			var file = (MetaDeck) DtDeckFiles.SelectedItem;
 
-			TxDeckname.Text = file.Name;
-			TxDescription.Text = file.Description;
-			TxDeckLink.Text = file.Link;
-			CbxFormat.SelectedItem = file.FormatType;
-			CbxClassCard.SelectedItem = file.HeroClass;
+			TxDeckname.Text              = file.Name;
+			TxDescription.Text           = file.Description;
+			TxDeckLink.Text              = file.Link;
+			CbxFormat.SelectedItem       = file.FormatType;
+			CbxClassCard.SelectedItem    = file.HeroClass;
 			CbxDeckStrategy.SelectedItem = file.Strategy;
-			CurrentDeck = file.CardIds.Select(Cards.FromId).ToList();
+			CurrentDeck = file.CardIds.Select(Cards.FromId)
+			                  .ToList();
 			LbCardCountValue.Content = CurrentDeck.Count;
-			DtGrDeck.ItemsSource = CurrentDeck.OrderBy(p => p.Class).ThenBy(c => c.Cost);
+			DtGrDeck.ItemsSource = CurrentDeck.OrderBy(p => p.Class)
+			                                  .ThenBy(c => c.Cost);
 		}
 
 		private void WriteAllDecks()
 		{
-			File.WriteAllText(Environment.CurrentDirectory + @"\allDecks.json", JsonConvert.SerializeObject(AllDecks, Formatting.Indented));
+			File.WriteAllText(Environment.CurrentDirectory + @"\allDecks.json",
+			                  JsonConvert.SerializeObject(AllDecks, Formatting.Indented));
 			DtDeckFiles.ItemsSource = AllDecks.OrderBy(p => p.Name);
 		}
 
-		private void BtnDeleteDeck_Click(object sender, RoutedEventArgs e)
+		private void BtnDeleteDeck_Click(
+			object          sender,
+			RoutedEventArgs e
+		)
 		{
-			var deck = (MetaDeck)DtDeckFiles.SelectedItem;
+			var deck = (MetaDeck) DtDeckFiles.SelectedItem;
 			AllDecks.Remove(deck);
 			WriteAllDecks();
 		}
 
-		private void CboxDeck1_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		private void CboxDeck1_SelectionChanged(
+			object                    sender,
+			SelectionChangedEventArgs e
+		)
 		{
 			var metaDeck = CboxDeck1.SelectedItem as MetaDeck;
 			if (metaDeck != null)
 			{
-				LblClass1.Content = metaDeck.HeroClass.ToString();
+				LblClass1.Content    = metaDeck.HeroClass.ToString();
 				CboxAi1.SelectedItem = metaDeck.Strategy;
-
 			}
 		}
 
-		private void CboxDeck2_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		private void CboxDeck2_SelectionChanged(
+			object                    sender,
+			SelectionChangedEventArgs e
+		)
 		{
 			var metaDeck = CboxDeck2.SelectedItem as MetaDeck;
 			if (metaDeck != null)
 			{
-				LblClass2.Content = metaDeck.HeroClass.ToString();
+				LblClass2.Content    = metaDeck.HeroClass.ToString();
 				CboxAi2.SelectedItem = metaDeck.Strategy;
-
 			}
 		}
 	}

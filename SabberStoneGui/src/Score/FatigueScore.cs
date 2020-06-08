@@ -18,7 +18,7 @@ using System;
 
 namespace SabberStoneGui.Score
 {
-	public class MidRangeScore : Score
+	public class FatigueScore : Score
 	{
 		public override int Rate()
 		{
@@ -36,23 +36,28 @@ namespace SabberStoneGui.Score
 
 			if ((OpBoardZone.Count == 0) && (BoardZone.Count > 0))
 			{
-				result += 5000;
+				result += 1000;
 			}
 
-			result += (BoardZone.Count - OpBoardZone.Count) * 5;
-
-			if (OpMinionTotHealthTaunt > 0)
+			if (OpHandCnt > 9)
 			{
-				result += OpMinionTotHealthTaunt * -1000;
+				result += 1000;
 			}
+
+			if (OpDeckCnt == 0)
+			{
+				result += 10000;
+			}
+
+			result += (DeckCnt - OpDeckCnt) * 50;
+
+			result += (BoardZone.Count - OpBoardZone.Count) * 10;
+
+			result += (MinionTotHealthTaunt - OpMinionTotHealthTaunt) * 10;
 
 			result += MinionTotAtk;
 
-			result += (HeroHp - OpHeroHp) * 10;
-
-			result += (MinionTotHealth - OpMinionTotHealth) * 10;
-
-			result += (MinionTotAtk - OpMinionTotAtk) * 10;
+			result += (HeroHp - OpHeroHp) * 5;
 
 			return result;
 		}
