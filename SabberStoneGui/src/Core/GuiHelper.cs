@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,48 +11,64 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
+
 using System;
 using System.Collections;
 using System.Linq;
-using SabberStoneCore.Enums;
 using SabberStoneCore.Config;
+using SabberStoneCore.Enums;
 using SabberStoneCore.Model;
 using SabberStoneGui.Deck;
-using SabberStoneCoreGui.Score;
-using SabberStoneCoreGui.Meta;
+using SabberStoneGui.Meta;
+using SabberStoneGui.Score;
 
 namespace SabberStoneGui.Core
 {
 	public class GuiHelper
 	{
-		public static GameConfig CreateGameConfig(MetaDeck deck1, MetaDeck deck2)
+		public static IEnumerable FormatTypes =>
+			Enum.GetValues(typeof(FormatType))
+			    .Cast<FormatType>()
+			    .Where(e => e != FormatType.FT_UNKNOWN);
+
+		public static IEnumerable ClassTypes =>
+			Enum.GetValues(typeof(CardClass))
+			    .Cast<CardClass>()
+			    .Where(e => (e != CardClass.INVALID)     &&
+			                (e != CardClass.DEATHKNIGHT) &&
+			                (e != CardClass.DREAM)       &&
+			                (e != CardClass.NEUTRAL));
+
+		public static IEnumerable StrategyTypes =>
+			Enum.GetValues(typeof(Strategy))
+			    .Cast<Strategy>();
+
+		public static GameConfig CreateGameConfig(
+			MetaDeck deck1,
+			MetaDeck deck2
+		)
 		{
-			return new GameConfig()
+			return new GameConfig
 			{
-				StartPlayer = 1,
-				Player1Name = "FitzVonGerald",
+				StartPlayer      = 1,
+				Player1Name      = "FitzVonGerald",
 				Player1HeroClass = deck1.HeroClass,
-				Player1Deck = deck1.CardIds.Select(Cards.FromId).ToList(),
-				Player2Name = "RehHausZuckFuchs",
+				Player1Deck = deck1.CardIds.Select(Cards.FromId)
+				                   .ToList(),
+				Player2Name      = "RehHausZuckFuchs",
 				Player2HeroClass = deck2.HeroClass,
-				Player2Deck = deck2.CardIds.Select(Cards.FromId).ToList(),
+				Player2Deck = deck2.CardIds.Select(Cards.FromId)
+				                   .ToList(),
 				FillDecks = false,
-				Shuffle = true
+				Shuffle   = true,
 			};
 		}
 
-		public static IEnumerable FormatTypes => Enum.GetValues(typeof(FormatType)).Cast<FormatType>().Where(e => e != FormatType.FT_UNKNOWN);
-		public static IEnumerable ClassTypes => Enum.GetValues(typeof(CardClass)).Cast<CardClass>()
-				.Where(e =>
-					e != CardClass.INVALID &&
-					e != CardClass.DEATHKNIGHT &&
-					e != CardClass.DREAM &&
-					e != CardClass.NEUTRAL);
-
-		public static IEnumerable StrategyTypes => Enum.GetValues(typeof(Strategy)).Cast<Strategy>();
-
-		public static IScore GetScoring(Strategy s)
+		public static IScore GetScoring(
+			Strategy s
+		)
 		{
 			switch (s)
 			{
@@ -66,7 +83,7 @@ namespace SabberStoneGui.Core
 				case Strategy.Fatigue:
 					return new FatigueScore();
 				default:
-					throw new ArgumentOutOfRangeException(nameof(s), s, null);
+					throw new ArgumentOutOfRangeException(nameof(s), s, message: null);
 			}
 		}
 	}

@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -6,83 +7,129 @@
 // it under the terms of the GNU Affero General Public License as
 // published by the Free Software Foundation, either version 3 of the
 // License.
+//
 // SabberStone is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
-using Newtonsoft.Json.Linq;
+
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace SabberStoneKettle
 {
 	public class KettleAdapter
 	{
-		private NetworkStream Stream;
-		private BinaryWriter Writer;
+		public delegate void OnChooseEntitiesDelegate(
+			KettleChooseEntities chooseEntities
+		);
+
+		public delegate void OnConcedeDelegate(
+			int concede
+		);
 
 		// Handlers for each packet type
-		public delegate void OnCreateGameDelegate(KettleCreateGame CreateGame);
-		public delegate void OnConcedeDelegate(int Concede);
-		public delegate void OnSendOptionDelegate(KettleSendOption SendOption);
-		public delegate void OnChooseEntitiesDelegate(KettleChooseEntities ChooseEntities);
-		public delegate void OnGameJoinedDelegate(KettleGameJoined GameJoined);
-		public delegate void OnEntityChoicesDelegate(KettleEntityChoices EntityChoices);
-		public delegate void OnEntitiesChosenDelegate(KettleEntitiesChosen EntitiesChosen);
-		public delegate void OnOptionsBlockDelegate(KettleOptionsBlock OptionsBlock);
-		public delegate void OnUserUIDelegate(KettleUserUI UserUI);
-		public delegate void OnJoinGameDelegate(KettleJoinGame JoinGame);
-		public delegate void OnStartClientDelegate(KettleStartClient JoinGame);
-		public delegate void OnHistoryDelegate(List<KettleHistoryEntry> History);
+		public delegate void OnCreateGameDelegate(
+			KettleCreateGame createGame
+		);
+
+		public delegate void OnEntitiesChosenDelegate(
+			KettleEntitiesChosen entitiesChosen
+		);
+
+		public delegate void OnEntityChoicesDelegate(
+			KettleEntityChoices entityChoices
+		);
+
+		public delegate void OnGameJoinedDelegate(
+			KettleGameJoined gameJoined
+		);
+
+		public delegate void OnHistoryDelegate(
+			List<KettleHistoryEntry> history
+		);
+
+		public delegate void OnJoinGameDelegate(
+			KettleJoinGame joinGame
+		);
+
+		public delegate void OnOptionsBlockDelegate(
+			KettleOptionsBlock optionsBlock
+		);
+
+		public delegate void OnSendOptionDelegate(
+			KettleSendOption sendOption
+		);
+
+		public delegate void OnStartClientDelegate(
+			KettleStartClient joinGame
+		);
+
+		public delegate void OnUserUIDelegate(
+			KettleUserUI userUI
+		);
+
+		private readonly NetworkStream _stream;
+		private readonly BinaryWriter _writer;
+		public OnChooseEntitiesDelegate OnChooseEntities;
+		public OnConcedeDelegate OnConcede;
 
 		public OnCreateGameDelegate OnCreateGame;
-		public OnConcedeDelegate OnConcede;
-		public OnSendOptionDelegate OnSendOption;
-		public OnChooseEntitiesDelegate OnChooseEntities;
-		public OnGameJoinedDelegate OnGameJoined;
-		public OnEntityChoicesDelegate OnEntityChoices;
 		public OnEntitiesChosenDelegate OnEntitiesChosen;
-		public OnOptionsBlockDelegate OnOptionsBlock;
-		public OnUserUIDelegate OnUserUI;
-		public OnJoinGameDelegate OnJoinGame;
-		public OnStartClientDelegate OnStartClient;
+		public OnEntityChoicesDelegate OnEntityChoices;
+		public OnGameJoinedDelegate OnGameJoined;
 		public OnHistoryDelegate OnHistory;
+		public OnJoinGameDelegate OnJoinGame;
+		public OnOptionsBlockDelegate OnOptionsBlock;
+		public OnSendOptionDelegate OnSendOption;
+		public OnStartClientDelegate OnStartClient;
+		public OnUserUIDelegate OnUserUI;
 
-		public KettleAdapter(NetworkStream stream)
+		public KettleAdapter(
+			NetworkStream stream
+		)
 		{
-			Stream = stream;
-			Writer = new BinaryWriter(Stream);
+			_stream = stream;
+			_writer = new BinaryWriter(_stream);
 		}
 
-		// returns true if the handle was successfull
+		// returns true if the handle was successful
 		public bool HandleNextPacket()
 		{
 			try
 			{
 				// read the int saying how much data we will receive
-				byte[] intbuffer = new byte[4];
-				if (!ReadBytes(intbuffer, 0, 4))
+				var buffering = new byte[4];
+				if (!ReadBytes(buffering, 0, 4))
+				{
 					return false;
+				}
 
-				int length = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(intbuffer, 0));
+				int length = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffering, 0));
 				Console.WriteLine("Read length:" + length);
 
 				// now read the actual payload
-				byte[] pbuffer = new byte[length];
+				var pbuffer = new byte[length];
 				if (!ReadBytes(pbuffer, 0, length))
+				{
 					return false;
+				}
 
 				// convert the buffer to a string
-				String payload = System.Text.Encoding.UTF8.GetString(pbuffer);
+				string payload = Encoding.UTF8.GetString(pbuffer);
 				Console.WriteLine("Read data:" + payload);
 
 				// make a json array from it
-				JArray jpayload = JArray.Parse(payload);
+				var jpayload = JArray.Parse(payload);
 
 				// and parse each object in the array
 				HandlePacket(jpayload);
@@ -95,14 +142,20 @@ namespace SabberStoneKettle
 			}
 		}
 
-		private bool ReadBytes(byte[] buffer, int offset, int count)
+		private bool ReadBytes(
+			byte[] buffer,
+			int offset,
+			int count
+		)
 		{
 			while (count > 0)
 			{
-				int read = Stream.Read(buffer, offset, count);
+				int read = _stream.Read(buffer, offset, count);
 
 				if (read == 0)
+				{
 					return false;
+				}
 
 				count -= read;
 				offset += read;
@@ -111,17 +164,19 @@ namespace SabberStoneKettle
 			return true;
 		}
 
-		private void HandlePacket(JArray jpacket)
+		private void HandlePacket(
+			JArray jpacket
+		)
 		{
-			String type = (String)jpacket[0]["Type"];
+			string type = (string) jpacket[0]["Type"];
 
 			if (type == "Concede")
 			{
-				OnConcede(((JValue)jpacket[0][type]).Value<int>());
+				OnConcede(((JValue) jpacket[0][type]).Value<int>());
 				return;
 			}
 
-			JObject obj = (JObject)jpacket[0][type];
+			var obj = (JObject) jpacket[0][type];
 
 			Console.WriteLine("Received packet of type: " + type);
 
@@ -180,11 +235,11 @@ namespace SabberStoneKettle
 				case KettleHistoryMetaData.KettleName:
 					var history = jpacket.AsEnumerable().Select(packet =>
 					{
-						string ptype = (String)packet["Type"];
+						string ptype = (string) packet["Type"];
 						switch (ptype)
 						{
 							case KettleHistoryBlockBegin.KettleName:
-								return (KettleHistoryEntry)packet[ptype].ToObject<KettleHistoryBlockBegin>();
+								return (KettleHistoryEntry) packet[ptype].ToObject<KettleHistoryBlockBegin>();
 							case KettleHistoryBlockEnd.KettleName:
 								return packet[ptype].ToObject<KettleHistoryBlockEnd>();
 							case KettleHistoryChangeEntity.KettleName:
@@ -214,30 +269,38 @@ namespace SabberStoneKettle
 			}
 		}
 
-		private void SendPacket(JArray packet)
+		private void SendPacket(
+			JArray packet
+		)
 		{
 			// Get the corresponding json string 
-			String data = Newtonsoft.Json.JsonConvert.SerializeObject(packet);
+			string data = JsonConvert.SerializeObject(packet);
 
 			// first send the length of the data
-			Writer.Write(IPAddress.HostToNetworkOrder(data.Length));
+			_writer.Write(IPAddress.HostToNetworkOrder(data.Length));
 
 
 			// and then send the data
-			Writer.Write(System.Text.Encoding.UTF8.GetBytes(data));
+			_writer.Write(Encoding.UTF8.GetBytes(data));
 		}
 
-		public void SendMessage(KettlePayload payload)
+		public void SendMessage(
+			KettlePayload payload
+		)
 		{
 			SendPacket(new JArray(payload.ToPayload()));
 		}
 
-		public void SendMessage(List<KettlePayload> payload)
+		public void SendMessage(
+			List<KettlePayload> payload
+		)
 		{
-			List<JObject> message = new List<JObject>();
+			var message = new List<JObject>();
 
 			foreach (KettlePayload p in payload)
+			{
 				message.Add(p.ToPayload());
+			}
 
 			SendPacket(new JArray(message));
 		}

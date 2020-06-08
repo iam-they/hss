@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,26 +11,30 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
+
+using System;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace SabberStoneGui
 {
-	/// <summary>
-	/// Interaktionslogik für "App.xaml"
-	/// </summary>
 	public partial class App : Application
 	{
 		public App()
 		{
-			var dispatcher = Dispatcher;
+			Dispatcher dispatcher = Dispatcher;
 			if (dispatcher != null)
 			{
 				dispatcher.UnhandledException += Dispatcher_UnhandledException;
 			}
 		}
 
-		private void Dispatcher_UnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+		private void Dispatcher_UnhandledException(
+			object                                sender,
+			DispatcherUnhandledExceptionEventArgs e
+		)
 		{
 			MessageBox.Show(e.Exception.ToString());
 			e.Handled = true;

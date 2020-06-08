@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,88 +11,105 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
-using System.Collections.Generic;
+
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using SabberStoneCore.Enums;
 using SabberStoneCore.Model;
+using SabberStoneCore.Model.Entities;
 using SabberStoneCore.Tasks.PlayerTasks;
-using SabberStoneCoreGui.Score;
+using SabberStoneGui.Score;
 
-namespace SabberStoneCoreGui.Nodes
+namespace SabberStoneGui.Nodes
 {
 	public class OptionNode
 	{
+		private readonly Game       _game;
 		private readonly OptionNode _parent;
 
-		private readonly Game _game;
+		private int _endTurn;
+
+		private int _gameState;
+
+		private bool _isOpponentTurn;
 
 		private int _playerId;
 
-		public PlayerTask PlayerTask { get; }
-
 		public string Hash;
 
-		private int _gameState;
-		public bool IsWon => _gameState > 0;
+		public OptionNode(
+			OptionNode parent,
+			Game       game,
+			int        playerId,
+			PlayerTask playerTask,
+			IScore     scoring
+		)
+		{
+			_parent    = parent;
+			_game      = game.Clone(); // create clone
+			_playerId  = playerId;
+			PlayerTask = playerTask;
+			Scoring    = scoring;
+
+			if (!IsRoot)
+			{
+				Execute();
+			}
+		}
+
+		public PlayerTask PlayerTask { get; }
+		public bool       IsWon      => _gameState > 0;
 
 		public bool IsLost => _gameState < 0;
 
 		public bool IsRunning => _gameState == 0;
-
-		private int _endTurn;
-		public bool IsEndTurn => _endTurn > 0;
+		public bool IsEndTurn => _endTurn   > 0;
 
 		public bool IsRoot => PlayerTask == null;
 
 		public int Score { get; private set; }
 
-		public IScore Scoring { get; private set; }
-
-		private bool _isOpponentTurn;
-
-		public OptionNode(OptionNode parent, Game game, int playerId, PlayerTask playerTask, IScore scoring)
-		{
-			_parent = parent;
-			_game = game.Clone(); // create clone
-			_playerId = playerId;
-			PlayerTask = playerTask;
-			Scoring = scoring;
-
-			if (!IsRoot)
-				Execute();
-		}
+		public IScore Scoring { get; }
 
 		public void Switch()
 		{
 			_isOpponentTurn = !_isOpponentTurn;
-			_playerId = _game.ControllerById(_playerId).Opponent.Id;
+			_playerId = _game.ControllerById(_playerId)
+			                 .Opponent.Id;
 		}
 
 		public void Execute()
 		{
 			_game.Process(PlayerTask);
 
-			SabberStoneCore.Model.Entities.Controller controller = _game.ControllerById(_playerId);
+			Controller controller = _game.ControllerById(_playerId);
 
-			_gameState = _game.State == State.RUNNING ? 0
-				: (controller.PlayState == PlayState.WON ? 1 : -1);
+			_gameState = _game.State == State.RUNNING ? 0 :
+				controller.PlayState == PlayState.WON ? 1 : -1;
 
-			_endTurn = _game.CurrentPlayer.Id != _playerId ? 1 : 0;
+			_endTurn = _game.CurrentPlayer.Id != _playerId
+				? 1
+				: 0;
 
 			Hash = _game.Hash(GameTag.LAST_CARD_PLAYED, GameTag.ENTITY_ID);
 
 			if (IsEndTurn || !IsRunning)
 			{
 				Scoring.Controller = controller;
-				Score = Scoring.Rate();
+				Score              = Scoring.Rate();
 			}
 		}
 
-		public void PlayerTasks(ref List<PlayerTask> list)
+		public void PlayerTasks(
+			ref List<PlayerTask> list
+		)
 		{
 			if (_parent == null)
+			{
 				return;
+			}
 
 			_parent.PlayerTasks(ref list);
 			list.Add(PlayerTask);
@@ -108,9 +126,12 @@ namespace SabberStoneCoreGui.Nodes
 		//			optionNodes.Add(optionNode.Hash, optionNode);
 		//	}
 		//}
-		public void Options(ref ConcurrentDictionary<string, OptionNode> optionNodes)
+		public void Options(
+			ref ConcurrentDictionary<string, OptionNode> optionNodes
+		)
 		{
-			List<PlayerTask> options = _game.ControllerById(_playerId).Options(/*!_isOpponentTurn*/);
+			List<PlayerTask> options = _game.ControllerById(_playerId)
+			                                .Options( /*!_isOpponentTurn*/);
 
 			foreach (PlayerTask option in options)
 			{

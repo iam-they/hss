@@ -115,12 +115,14 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="src\Deck\IDeck.cs" />
     <Compile Include="src\Meta\Strategy.cs" />
     <Compile Include="src\Score\AggroScore.cs" />
-    <Compile Include="src\Score\Control.cs" />
-    <Compile Include="src\Score\Fatigue.cs" />
+    <Compile Include="src\Score\ControlScore.cs" />
+    <Compile Include="src\Score\FatigueScore.cs" />
+    <Compile Include="src\Score\IScore.cs" />
     <Compile Include="src\Score\MidRangeScore.cs" />
-    <Compile Include="src\Score\Ramp.cs" />
+    <Compile Include="src\Score\RampScore.cs" />
     <Compile Include="src\Score\Score.cs" />
     <Page Include="src\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -131,7 +133,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="src\Core\GuiHelper.cs" />
-    <Compile Include="src\Deck\Decks.cs" />
+    <Compile Include="src\Deck\MetaDeck.cs" />
     <Compile Include="src\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

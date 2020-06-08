@@ -1,4 +1,5 @@
 ﻿#region copyright
+
 // SabberStone, Hearthstone Simulator in C# .NET Core
 // Copyright (C) 2017-2019 SabberStone Team, darkfriend77 & rnilva
 //
@@ -10,26 +11,38 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 #endregion
-namespace SabberStoneCoreGui.Score
+
+using System;
+
+namespace SabberStoneGui.Score
 {
 	public class AggroScore : Score
 	{
 		public override int Rate()
 		{
 			if (OpHeroHp < 1)
-				return int.MaxValue;
+			{
+				return Int32.MaxValue;
+			}
 
 			if (HeroHp < 1)
-				return int.MinValue;
+			{
+				return Int32.MinValue;
+			}
 
 			int result = 0;
 
-			if (OpBoardZone.Count == 0 && BoardZone.Count > 0)
+			if ((OpBoardZone.Count == 0) && (BoardZone.Count > 0))
+			{
 				result += 1000;
+			}
 
 			if (OpMinionTotHealthTaunt > 0)
+			{
 				result += OpMinionTotHealthTaunt * -1000;
+			}
 
 			result += MinionTotAtk;
 
